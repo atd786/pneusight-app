@@ -11,221 +11,223 @@ import random
 import os
 import urllib.request
 
-# --- 1. PAGE CONFIGURATION (Must be first) ---
+# --- 1. PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="PneuSight AI",
+    page_title="AIRCPK | PneuSight AI",
     page_icon="🩻",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. "STEALTH MODE" CSS (The Magic) ---
+# --- 2. AIRCPK BRANDING CSS ---
 st.markdown("""
     <style>
-    /* --------------------------------------- */
-    /* INVISIBLE CLOAK (Hide Streamlit)        */
-    /* --------------------------------------- */
+    /* INVISIBLE CLOAK */
+    #MainMenu, footer, header { visibility: hidden; display: none !important; }
     
-    /* 1. Hide the Hamburger Menu (Top Right) */
-    #MainMenu {
-        visibility: hidden;
-        display: none;
+    /* MAIN THEME */
+    html, body, [class*="css"] {
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        background-color: #ffffff; 
+        overflow-x: hidden;
     }
-    
-    /* 2. Hide the "Built with Streamlit" Footer */
-    footer {
-        visibility: hidden;
-        display: none !important; /* Force removal */
-        height: 0px;
-    }
-    
-    /* 3. Hide the Colored Header Line */
-    header {
-        visibility: hidden;
-        display: none !important;
-    }
-    
-    /* 4. Remove whitespace at top so it fits in WordPress */
+
     .block-container {
-        padding-top: 0rem;
-        padding-bottom: 1rem;
+        padding-top: 1rem;
+        padding-bottom: 5rem;
         padding-left: 2rem;
         padding-right: 2rem;
     }
 
-    /* --------------------------------------- */
-    /* THEME: TEAL & MEDICAL                   */
-    /* --------------------------------------- */
-    
-    /* Global Font */
-    html, body, [class*="css"] {
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        background-color: #ffffff; /* Pure White match */
+    /* MOBILE TWEAKS */
+    @media only screen and (max-width: 600px) {
+        .block-container { padding: 0.5rem !important; }
+        h1 { font-size: 1.8rem !important; }
     }
 
-    /* Custom Buttons */
+    /* AIRCPK BLUE BUTTONS */
     .stButton>button {
-        background-color: #008080; /* Teal */
+        background-color: #004d99; /* Corporate Blue */
         color: white;
         border: none;
-        border-radius: 8px;
+        border-radius: 0px; /* Sharp, professional corners */
         height: 55px;
         width: 100%;
         font-size: 18px;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        box-shadow: 0 4px 6px rgba(0, 128, 128, 0.2);
+        font-weight: 700;
+        letter-spacing: 1px;
+        box-shadow: 0 4px 6px rgba(0, 77, 153, 0.2);
         transition: all 0.3s ease;
     }
     
     .stButton>button:hover {
-        background-color: #006666;
+        background-color: #003366; /* Darker Blue */
         transform: translateY(-2px);
-        box-shadow: 0 6px 8px rgba(0, 128, 128, 0.3);
+        box-shadow: 0 6px 8px rgba(0, 77, 153, 0.3);
     }
 
-    /* File Uploader Styling */
+    /* UPLOAD STYLING */
     .stFileUploader {
-        border: 2px dashed #008080;
-        border-radius: 10px;
-        padding: 20px;
-        background-color: #f8fdfd;
+        border: 2px dashed #004d99;
+        border-radius: 0px;
+        padding: 25px;
+        background-color: #f4f8fb;
     }
 
-    /* Custom Alert Boxes */
+    /* ALERT BOXES */
     .medical-box-danger {
         background-color: #fff5f5;
-        border-left: 6px solid #e53e3e;
+        border-left: 8px solid #c53030; /* Red */
         padding: 20px;
-        border-radius: 8px;
         color: #c53030;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin-bottom: 15px;
+        border-radius: 0px;
     }
     
     .medical-box-safe {
-        background-color: #f0fff4;
-        border-left: 6px solid #38a169;
+        background-color: #f0f9ff;
+        border-left: 8px solid #004d99; /* Blue */
         padding: 20px;
-        border-radius: 8px;
-        color: #2f855a;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        color: #004d99;
+        margin-bottom: 15px;
+        border-radius: 0px;
     }
 
-    /* Typography */
-    h1 { color: #008080; font-weight: 800; letter-spacing: -1px; }
-    h2 { color: #2d3748; font-weight: 600; }
-    p { color: #4a5568; font-size: 1.1rem; }
-
-    /* Hide the "Running" man icon */
     .stStatusWidget { visibility: hidden; }
     
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. PDF ENGINE (Professional) ---
+# --- 3. PROFESSIONAL PDF REPORT ENGINE ---
 class MedicalReport(FPDF):
     def header(self):
-        self.set_font('Arial', 'B', 24)
-        self.set_text_color(0, 128, 128) # Teal
-        self.cell(0, 15, 'PNEUSIGHT AI', 0, 1, 'L')
+        # Logo (Top Left)
+        # We use a placeholder link that FPDF can download temporarily
+        logo_url = "https://aircpk.com/wp-content/uploads/2025/10/cropped-cropped-AIRCPK-Logo.jpeg"
+        try:
+            self.image(logo_url, 10, 10, 40) # x, y, width
+        except:
+            pass # Fallback if internet fails
+
+        # Title (Top Right)
+        self.set_font('Arial', 'B', 20)
+        self.set_text_color(0, 77, 153) # AIRCPK Blue
+        self.cell(0, 15, 'DIAGNOSTIC IMAGING REPORT', 0, 1, 'R')
         
-        self.set_font('Arial', 'I', 10)
+        self.set_font('Arial', 'B', 10)
         self.set_text_color(100, 100, 100)
-        self.cell(0, 5, 'Powered by Aircpk.com Medical Division', 0, 1, 'L')
+        self.cell(0, 5, 'AIRCPK.COM | ADVANCED AI SCREENING', 0, 1, 'R')
         
+        self.ln(20)
+        
+        # Professional Header Line
+        self.set_draw_color(0, 77, 153)
+        self.set_line_width(2)
+        self.line(10, 45, 200, 45)
+        self.set_line_width(0.5)
+        self.line(10, 47, 200, 47)
         self.ln(10)
-        self.set_draw_color(0, 128, 128)
-        self.set_line_width(1.5)
-        self.line(10, 35, 200, 35)
 
     def footer(self):
         self.set_y(-20)
         self.set_font('Arial', 'I', 8)
         self.set_text_color(150, 150, 150)
-        self.cell(0, 10, f'Confidential Medical Record | Page {self.page_no()}/{{nb}}', 0, 0, 'C')
+        # Professional Footer with Page Number
+        self.cell(0, 10, f'CONFIDENTIAL | System Generated Report | Page {self.page_no()}/{{nb}}', 0, 0, 'C')
 
 def create_pdf(img_path, status, confidence, filename):
     pdf = MedicalReport()
     pdf.alias_nb_pages()
     pdf.add_page()
     
-    # Info Grid
-    pdf.set_font('Arial', 'B', 12)
+    # --- PATIENT & EXAM DATA ---
+    pdf.set_font('Arial', 'B', 11)
     pdf.set_text_color(50, 50, 50)
     
-    pdf.cell(40, 10, 'Patient ID:', 0, 0)
-    pdf.set_font('Arial', '', 12)
-    pdf.cell(60, 10, f'#{random.randint(100000, 999999)}', 0, 1)
+    # Left Column
+    pdf.cell(35, 8, 'Patient Ref:', 0, 0)
+    pdf.set_font('Arial', '', 11)
+    pdf.cell(60, 8, f'#{random.randint(100000, 999999)}', 0, 0)
     
-    pdf.set_font('Arial', 'B', 12)
-    pdf.cell(40, 10, 'Scan Date:', 0, 0)
-    pdf.set_font('Arial', '', 12)
-    pdf.cell(60, 10, time.strftime("%B %d, %Y"), 0, 1)
+    # Right Column
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(35, 8, 'Exam Date:', 0, 0)
+    pdf.set_font('Arial', '', 11)
+    pdf.cell(60, 8, time.strftime("%Y-%m-%d"), 0, 1)
     
-    pdf.set_font('Arial', 'B', 12)
-    pdf.cell(40, 10, 'File Ref:', 0, 0)
-    pdf.set_font('Arial', '', 12)
-    pdf.cell(60, 10, filename[:15] + "...", 0, 1)
+    # Left Column
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(35, 8, 'Image ID:', 0, 0)
+    pdf.set_font('Arial', '', 11)
+    pdf.cell(60, 8, filename[:18] + "...", 0, 0)
+    
+    # Right Column
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(35, 8, 'Modality:', 0, 0)
+    pdf.set_font('Arial', '', 11)
+    pdf.cell(60, 8, 'Chest X-Ray (AI Analysis)', 0, 1)
     
     pdf.ln(10)
     
-    # X-Ray Image (Centered and Framed)
+    # --- IMAGE DISPLAY ---
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(0, 77, 153)
+    pdf.cell(0, 10, 'ANALYZED IMAGING', 0, 1, 'L')
+    
     img = Image.open(img_path).convert('RGB')
     img.save("temp_scan.jpg")
-    pdf.image("temp_scan.jpg", x=60, w=90)
-    pdf.rect(60, 63, 90, 90) # Border around image
-    pdf.ln(5)
+    # Large, centered image
+    pdf.image("temp_scan.jpg", x=55, w=100)
+    pdf.set_draw_color(200, 200, 200)
+    pdf.rect(55, 93, 100, 100) # Subtle border
+    pdf.ln(105)
     
-    # Result Container
-    pdf.set_y(160)
-    pdf.set_fill_color(240, 250, 250) # Light Teal
-    pdf.rect(10, 160, 190, 45, 'F')
+    # --- DIAGNOSTIC FINDINGS BOX ---
+    pdf.set_fill_color(245, 248, 252) # Very light blue background
+    pdf.set_draw_color(0, 77, 153) # Blue border
+    pdf.set_line_width(0.5)
+    pdf.rect(10, 200, 190, 40, 'FD')
     
-    pdf.set_y(165)
+    pdf.set_y(205)
     pdf.set_font('Arial', 'B', 14)
-    pdf.set_text_color(0, 128, 128)
-    pdf.cell(0, 10, 'DIAGNOSTIC FINDINGS', 0, 1, 'C')
+    pdf.set_text_color(0, 77, 153)
+    pdf.cell(0, 8, 'AI DIAGNOSTIC IMPRESSION', 0, 1, 'C')
     
-    pdf.set_font('Arial', 'B', 22)
+    pdf.set_font('Arial', 'B', 20)
     if "PNEUMONIA" in status:
-        pdf.set_text_color(197, 48, 48) # Alarm Red
+        pdf.set_text_color(197, 48, 48) # Brand Red for Danger
     else:
-        pdf.set_text_color(47, 133, 90) # Safe Green
-    pdf.cell(0, 15, status, 0, 1, 'C')
+        pdf.set_text_color(0, 77, 153) # Brand Blue for Safe
+    pdf.cell(0, 12, status, 0, 1, 'C')
     
-    pdf.set_font('Arial', '', 12)
-    pdf.set_text_color(50, 50, 50)
-    pdf.cell(0, 10, f'AI Certainty Level: {confidence:.2f}%', 0, 1, 'C')
-    
-    # Disclaimer
-    pdf.set_y(230)
-    pdf.set_font('Arial', '', 10)
+    pdf.set_font('Arial', '', 11)
     pdf.set_text_color(100, 100, 100)
-    pdf.multi_cell(0, 6, "NOTICE: This automated report is generated by PneuSight Deep Learning algorithms. It utilizes DenseNet121 architecture with TTA verification. This document serves as a triage aid and does not replace a certified radiologist's diagnosis.")
+    pdf.cell(0, 8, f'Algorithm Confidence: {confidence:.1f}% (Multi-View TTA Verification)', 0, 1, 'C')
     
-    # Signature Line
-    pdf.line(120, 260, 190, 260)
-    pdf.text(120, 265, "Radiologist Signature")
+    # --- PROFESSIONAL DISCLAIMER (No Signature) ---
+    pdf.set_y(250)
+    pdf.set_font('Arial', '', 9)
+    pdf.set_text_color(120, 120, 120)
+    pdf.multi_cell(0, 5, "NOTE: This report is automatically generated by the PneuSight Deep Learning system (DenseNet121 architecture). It is intended solely as a preliminary triage tool to assist medical professionals. This document does not constitute a final medical diagnosis. All findings must be reviewed and verified by a licensed radiologist.")
     
     return pdf.output(dest="S").encode("latin-1")
 
 # --- 4. MODEL DOWNLOADER ---
 def download_model():
     model_path = 'best_xray_model.keras'
-    
-    # ⚠️ PASTE YOUR GITHUB RELEASE LINK HERE ⬇️
-    url = "https://github.com/atd786/pneusight-app/releases/download/v1.0/best_xray_model.keras" 
+    # LINK IS ALREADY INCLUDED HERE
+    url = "https://github.com/atd786/pneusight-app/releases/download/v1.0/best_xray_model.keras"
     
     if not os.path.exists(model_path):
         status_text = st.empty()
-        status_text.info("⚙️ Initializing PneuSight Neural Engine... (Downloading Model)")
+        status_text.info("⚙️ Initializing AIRCPK Neural Engine...")
         try:
             urllib.request.urlretrieve(url, model_path)
             status_text.success("✅ Engine Ready")
             time.sleep(1)
             status_text.empty()
         except Exception as e:
-            st.error(f"Critical Error: {e}")
+            st.error(f"Critical Connection Error: {e}")
             st.stop()
     return model_path
 
@@ -238,13 +240,12 @@ def load_my_model():
 try:
     model = load_my_model()
 except:
-    st.error("⚠️ System Offline. Check configuration.")
+    st.error("⚠️ System Offline. Please refresh.")
     st.stop()
 
 # --- 6. AI LOGIC (TTA) ---
 def make_robust_prediction(img):
     img = img.convert('RGB')
-    # TTA: Original + Mirror + Zoom
     images_to_test = [img, ImageOps.mirror(img)]
     w, h = img.size
     zoom = img.crop((w*0.1, h*0.1, w*0.9, h*0.9)).resize((w, h))
@@ -261,89 +262,78 @@ def make_robust_prediction(img):
 
 # --- 7. FRONT END UI ---
 
-# Header
-c1, c2 = st.columns([1, 5])
+# Header with Logo
+c1, c2 = st.columns([1, 4])
 with c1:
-    # You can replace this with a logo URL if you have one
-    st.markdown("## 🩻") 
+    st.image("https://aircpk.com/wp-content/uploads/2025/10/cropped-cropped-AIRCPK-Logo.jpeg", width=150)
 with c2:
-    st.markdown("# PneuSight Radiology")
-    st.caption("Advanced AI Triage & Screening Portal")
+    st.markdown("""
+        <h1 style='color:#004d99; margin-bottom:0;'>PneuSight Radiology</h1>
+        <p style='color:#666; font-size:1.1rem;'>AIRCPK Advanced AI Triage Portal</p>
+    """, unsafe_allow_html=True)
 
 st.divider()
 
 # Upload Section
-uploaded_files = st.file_uploader("Drop DICOM or JPEG X-Rays Here", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+uploaded_files = st.file_uploader("Upload DICOM or JPEG X-Ray Scans", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
 if uploaded_files:
-    # Big Teal Action Button
-    if st.button("INITIALIZE DIAGNOSTIC PROTOCOL"):
+    # Big Blue Action Button
+    if st.button("START DIAGNOSTIC PROTOCOL"):
         
-        # Progress Bar Animation
         progress_bar = st.progress(0)
         status_text = st.empty()
         
         for idx, uploaded_file in enumerate(uploaded_files):
-            status_text.text(f"Processing Scan {idx+1}/{len(uploaded_files)}...")
-            
-            # Layout
+            status_text.text(f"Analyzing Scan {idx+1}/{len(uploaded_files)}...")
             st.markdown("---")
-            col1, col2 = st.columns([1, 1.5])
             
-            # Image Processing
+            # Logic
             img = Image.open(uploaded_file)
             score = make_robust_prediction(img)
             
-            # Decision Logic
             if score > 0.5:
                 status = "PNEUMONIA DETECTED"
                 confidence = score * 100
                 box_class = "medical-box-danger"
                 icon = "⚠️"
-                subtext = "Immediate radiologist review recommended."
+                subtext = "Immediate Radiologist Review Recommended."
             else:
                 status = "NORMAL / CLEAR"
                 confidence = (1 - score) * 100
                 box_class = "medical-box-safe"
                 icon = "✅"
-                subtext = "No thoracic anomalies detected."
+                subtext = "No Thoracic Anomalies Detected."
                 
-            # Display Left (Image)
-            with col1:
-                st.image(img, caption=f"ID: {uploaded_file.name}", use_column_width=True)
-                
-            # Display Right (Results)
-            with col2:
-                st.markdown(f"""
-                <div class="{box_class}">
-                    <h3 style="margin:0; padding:0;">{icon} {status}</h3>
-                    <hr style="margin:10px 0; border-color:rgba(0,0,0,0.1);">
-                    <p style="font-size:1.2rem; font-weight:bold;">Confidence: {confidence:.2f}%</p>
-                    <p style="font-size:0.9rem; opacity:0.8;">{subtext}</p>
-                    <p style="font-size:0.8rem; opacity:0.6; margin-top:10px;">Verified via Multi-View TTA Analysis</p>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # PDF Button Logic
-                pdf_data = create_pdf(uploaded_file, status, confidence, uploaded_file.name)
-                b64 = base64.b64encode(pdf_data).decode()
-                
-                # Custom HTML Button for Download
-                href = f"""
-                <a href="data:application/octet-stream;base64,{b64}" download="Medical_Report_{uploaded_file.name}.pdf" style="text-decoration:none;">
-                    <div style="background-color:#008080; color:white; padding:12px; text-align:center; border-radius:5px; margin-top:15px; font-weight:bold; cursor:pointer; transition:0.3s;">
-                        📄 Download Official Report
-                    </div>
-                </a>
-                """
-                st.markdown(href, unsafe_allow_html=True)
+            # Stacked Layout for Mobile
+            st.image(img, caption=f"Scan ID: {uploaded_file.name}", use_column_width=True)
             
-            # Update Progress
-            time.sleep(0.5) # UX pause
+            st.markdown(f"""
+            <div class="{box_class}">
+                <h3 style="margin:0; padding:0; color:inherit;">{icon} {status}</h3>
+                <hr style="margin:15px 0; border-color:rgba(0,0,0,0.1);">
+                <p style="font-size:1.2rem; font-weight:700; color:inherit;">Confidence: {confidence:.1f}%</p>
+                <p style="font-size:1.0rem; margin-bottom:0;">{subtext}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # PDF Download Button
+            pdf_data = create_pdf(uploaded_file, status, confidence, uploaded_file.name)
+            b64 = base64.b64encode(pdf_data).decode()
+            
+            href = f"""
+            <a href="data:application/octet-stream;base64,{b64}" download="AIRCPK_Report_{uploaded_file.name}.pdf" style="text-decoration:none;">
+                <div style="background-color:#004d99; color:white; padding:15px; text-align:center; font-weight:bold; cursor:pointer; transition:0.3s; margin-top:10px; letter-spacing:1px;">
+                    📄 DOWNLOAD OFFICIAL REPORT
+                </div>
+            </a>
+            """
+            st.markdown(href, unsafe_allow_html=True)
+            
+            time.sleep(0.5)
             progress_bar.progress((idx + 1) / len(uploaded_files))
             
-        status_text.success("Analysis Complete.")
+        status_text.success("All Scans Processed Successfully.")
         
 else:
-    st.info("System Ready. Awaiting secure file upload.")
-
+    st.info("System Secure. Awaiting patient data upload.")

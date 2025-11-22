@@ -13,7 +13,7 @@ import urllib.request
 
 # --- 1. PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="AIRCPK | PneuSight AI",
+    page_title="AIRC | PneuSight AI",
     page_icon="🩻",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -337,4 +337,5 @@ if uploaded_files:
         
 else:
     st.info("System Secure. Awaiting patient data upload.")
+
 

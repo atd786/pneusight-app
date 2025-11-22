@@ -23,22 +23,38 @@ st.set_page_config(
 st.markdown("""
     <style>
     /* --------------------------------------- */
-    /* INVISIBLE CLOAK (Hide Streamlit)   */
+    /* INVISIBLE CLOAK (Hide Streamlit)        */
     /* --------------------------------------- */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
     
-    /* Remove top whitespace so it blends with WordPress header */
+    /* 1. Hide the Hamburger Menu (Top Right) */
+    #MainMenu {
+        visibility: hidden;
+        display: none;
+    }
+    
+    /* 2. Hide the "Built with Streamlit" Footer */
+    footer {
+        visibility: hidden;
+        display: none !important; /* Force removal */
+        height: 0px;
+    }
+    
+    /* 3. Hide the Colored Header Line */
+    header {
+        visibility: hidden;
+        display: none !important;
+    }
+    
+    /* 4. Remove whitespace at top so it fits in WordPress */
     .block-container {
-        padding-top: 1rem;
+        padding-top: 0rem;
         padding-bottom: 1rem;
         padding-left: 2rem;
         padding-right: 2rem;
     }
 
     /* --------------------------------------- */
-    /* THEME: TEAL & MEDICAL         */
+    /* THEME: TEAL & MEDICAL                   */
     /* --------------------------------------- */
     
     /* Global Font */
@@ -198,7 +214,7 @@ def download_model():
     model_path = 'best_xray_model.keras'
     
     # ⚠️ PASTE YOUR GITHUB RELEASE LINK HERE ⬇️
-    url = "https://github.com/atd786/pneusight-app/releases/download/v1.0/best_xray_model.keras" 
+    url = "PASTE_YOUR_LINK_HERE" 
     
     if not os.path.exists(model_path):
         status_text = st.empty()
@@ -330,4 +346,3 @@ if uploaded_files:
         
 else:
     st.info("System Ready. Awaiting secure file upload.")
-

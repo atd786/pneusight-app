@@ -214,7 +214,7 @@ def download_model():
     model_path = 'best_xray_model.keras'
     
     # ⚠️ PASTE YOUR GITHUB RELEASE LINK HERE ⬇️
-    url = "PASTE_YOUR_LINK_HERE" 
+    url = "https://github.com/atd786/pneusight-app/releases/download/v1.0/best_xray_model.keras" 
     
     if not os.path.exists(model_path):
         status_text = st.empty()
@@ -346,3 +346,4 @@ if uploaded_files:
         
 else:
     st.info("System Ready. Awaiting secure file upload.")
+

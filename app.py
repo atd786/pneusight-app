@@ -111,7 +111,7 @@ def download_model():
     model_path = 'best_xray_model.keras'
     
     # ⚠️ IMPORTANT: REPLACE THIS URL WITH YOUR GITHUB RELEASE LINK
-    url = "PASTE_YOUR_LINK_HERE" 
+    url = "https://github.com/atd786/pneusight-app/releases/download/v1.0/best_xray_model.keras" 
     
     # Check if we already have the model
     if not os.path.exists(model_path):
@@ -219,4 +219,5 @@ if uploaded_files and st.button("RUN PNEUSIGHT PROTOCOL"):
             st.markdown(href, unsafe_allow_html=True)
             
         st.divider()
+
         progress_bar.progress((idx + 1) / len(uploaded_files))

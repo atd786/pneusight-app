@@ -3,4 +3,3 @@ tensorflow-cpu
 numpy
 pillow
 fpdf
-2.  **Streamlit Cloud:**

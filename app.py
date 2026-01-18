@@ -10,7 +10,7 @@ import time
 import random
 import os
 import urllib.request
-import matplotlib.cm as cm # Required for Heatmap
+import matplotlib.cm as cm
 from datetime import datetime, timedelta, timezone
 
 # --- 1. PAGE CONFIGURATION ---
@@ -310,6 +310,7 @@ def find_last_conv_layer(model):
     for layer in reversed(model.layers):
         try:
             # Check if layer is 4D (Batch, Height, Width, Channels)
+            # Safe check for both 'output' tensor and 'output_shape' attribute
             if hasattr(layer, 'output'):
                 shape = layer.output.shape
             elif hasattr(layer, 'output_shape'):
@@ -326,7 +327,7 @@ def find_last_conv_layer(model):
 def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None):
     if not last_conv_layer_name: return np.zeros((224, 224))
     
-    # FIXED: Use model.input (singular) to avoid list-wrapping errors
+    # FIXED: Use model.input (singular) to avoid mismatch
     grad_model = tf.keras.models.Model(
         model.input, [model.get_layer(last_conv_layer_name).output, model.output]
     )

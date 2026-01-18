@@ -10,7 +10,7 @@ import time
 import random
 import os
 import urllib.request
-import matplotlib.cm as cm # New import for Heatmap colors
+import matplotlib.cm as cm # 1. ADDED: New import for Heatmap colors
 from datetime import datetime, timedelta, timezone
 
 # --- 1. PAGE CONFIGURATION ---
@@ -302,11 +302,25 @@ except:
 def find_last_conv_layer(model):
     """Automatically finds the last convolutional layer in the model."""
     for layer in reversed(model.layers):
-        if len(layer.output_shape) == 4:
-            return layer.name
+        try:
+            # Check if layer is 4D (Batch, Height, Width, Channels)
+            # Safe check for both 'output' tensor and 'output_shape' attribute
+            if hasattr(layer, 'output'):
+                shape = layer.output.shape
+            elif hasattr(layer, 'output_shape'):
+                shape = layer.output_shape
+            else:
+                continue
+
+            if len(shape) == 4:
+                return layer.name
+        except:
+            continue
     return None
 
 def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None):
+    if not last_conv_layer_name: return np.zeros((224, 224))
+
     grad_model = tf.keras.models.Model(
         [model.inputs], [model.get_layer(last_conv_layer_name).output, model.output]
     )
@@ -444,7 +458,7 @@ if demo_active or (uploaded_files and st.button("START ANALYSIS")):
     
     progress = st.progress(0)
     
-    # Locate Conv Layer for Explainability
+    # 2. ADDED: Locate Conv Layer for Explainability
     last_conv_layer = find_last_conv_layer(model)
     
     for idx, (file_source, filename) in enumerate(files_to_process):
@@ -484,20 +498,23 @@ if demo_active or (uploaded_files and st.button("START ANALYSIS")):
                 
                 st.markdown(f"""<div class="{cls}"><h3>{icon} {status}</h3><p>Confidence: {conf:.1f}%</p></div>""", unsafe_allow_html=True)
                 
-                # --- NEW FEATURE: HEATMAP TOGGLE ---
+                # 3. ADDED: HEATMAP TOGGLE
                 show_heatmap = st.toggle("🔍 Enable AI Vision (Heatmap)", key=f"heat_{idx}")
                 
                 if show_heatmap:
-                    with st.spinner("Generating Grad-CAM visualization..."):
-                        # Prepare image for Heatmap
-                        img_array = image.img_to_array(img.resize((224, 224)))
-                        img_array = np.expand_dims(img_array, axis=0) / 255.0
-                        
-                        # Generate Heatmap
-                        heatmap = make_gradcam_heatmap(img_array, model, last_conv_layer)
-                        overlay = generate_heatmap_overlay(img, heatmap)
-                        
-                        st.image(overlay, caption="AI Attention Map (Red = Infection Focus)", width=250)
+                    if last_conv_layer:
+                        with st.spinner("Generating Grad-CAM visualization..."):
+                            # Prepare image for Heatmap
+                            img_array = image.img_to_array(img.resize((224, 224)))
+                            img_array = np.expand_dims(img_array, axis=0) / 255.0
+                            
+                            # Generate Heatmap
+                            heatmap = make_gradcam_heatmap(img_array, model, last_conv_layer)
+                            overlay = generate_heatmap_overlay(img, heatmap)
+                            
+                            st.image(overlay, caption="AI Attention Map (Red = Infection Focus)", width=250)
+                    else:
+                        st.warning("⚠️ Heatmap not available: Could not auto-detect model layers.")
                 
                 # PDF Download Button
                 try:

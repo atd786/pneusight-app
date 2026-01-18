@@ -24,7 +24,7 @@ st.set_page_config(
 # --- 2. AIRCPK BRANDING CSS ---
 st.markdown("""
     <style>
-    /* INVISIBLE CLOAK - Hides Streamlit Branding */
+    /* INVISIBLE CLOAK */
     #MainMenu, footer, header { visibility: hidden; display: none !important; }
     
     /* MAIN THEME */
@@ -41,7 +41,6 @@ st.markdown("""
         padding-right: 2rem;
     }
 
-    /* MOBILE TWEAKS */
     @media only screen and (max-width: 600px) {
         .block-container { padding: 0.5rem !important; }
         h1 { font-size: 1.8rem !important; }
@@ -218,8 +217,9 @@ except:
     st.error("⚠️ System Offline.")
     st.stop()
 
-# --- 6A. EXPLAINABILITY ENGINE (FIXED INPUT SHAPE) ---
+# --- 6A. EXPLAINABILITY ENGINE (FIXED: GATHER & INPUT) ---
 def find_last_conv_layer(model):
+    """Automatically finds the last convolutional layer in the model."""
     for layer in reversed(model.layers):
         try:
             if hasattr(layer, 'output'): shape = layer.output.shape
@@ -232,16 +232,21 @@ def find_last_conv_layer(model):
 def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None):
     if not last_conv_layer_name: return np.zeros((224, 224))
     
-    # Use model.input (singular) to ensure Keras handles the single tensor correctly
+    # 1. Use singular 'input' to avoid list wrapping issues
     grad_model = tf.keras.models.Model(
         model.input, [model.get_layer(last_conv_layer_name).output, model.output]
     )
 
+    # 2. Convert to float32 to match TensorFlow standard
+    img_tensor = tf.cast(img_array, tf.float32)
+
     with tf.GradientTape() as tape:
-        last_conv_layer_output, preds = grad_model(img_array)
+        last_conv_layer_output, preds = grad_model(img_tensor)
         if pred_index is None:
             pred_index = tf.argmax(preds[0])
-        class_channel = preds[:, int(pred_index)]
+        
+        # 3. Use tf.gather for safe indexing of tensors (No int() cast needed)
+        class_channel = tf.gather(preds, pred_index, axis=1)
 
     grads = tape.gradient(class_channel, last_conv_layer_output)
     pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
@@ -349,13 +354,12 @@ if st.session_state.run_analysis and st.session_state.file_list:
                 
                 st.markdown(f"""<div class="{cls}"><h3>{icon} {status}</h3><p>Confidence: {conf:.1f}%</p></div>""", unsafe_allow_html=True)
                 
-                # HEATMAP TOGGLE
                 show_heatmap = st.toggle("🔍 Enable AI Vision (Heatmap)", key=f"heat_{idx}")
                 
                 if show_heatmap:
                     if last_conv_layer:
                         with st.spinner("Generating Grad-CAM visualization..."):
-                            # FIXED: Force RGB conversion to match Model Input (3 Channels)
+                            # 4. FORCE RGB TO MATCH MODEL (3-Channel)
                             img_rgb = img.convert('RGB').resize((224, 224))
                             img_array = image.img_to_array(img_rgb)
                             img_array = np.expand_dims(img_array, axis=0) / 255.0

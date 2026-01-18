@@ -217,7 +217,7 @@ except:
     st.error("⚠️ System Offline.")
     st.stop()
 
-# --- 6A. EXPLAINABILITY ENGINE ---
+# --- 6A. EXPLAINABILITY ENGINE (FIXED: GATHER + RGB) ---
 def find_last_conv_layer(model):
     """Automatically finds the last convolutional layer in the model."""
     for layer in reversed(model.layers):
@@ -232,15 +232,21 @@ def find_last_conv_layer(model):
 def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None):
     if not last_conv_layer_name: return np.zeros((224, 224))
     
+    # 1. Use model.input (singular) to avoid input compatibility list error
     grad_model = tf.keras.models.Model(
         model.input, [model.get_layer(last_conv_layer_name).output, model.output]
     )
 
+    # 2. Ensure input is float32 tensor
+    img_tensor = tf.cast(img_array, tf.float32)
+
     with tf.GradientTape() as tape:
-        last_conv_layer_output, preds = grad_model(img_array)
+        last_conv_layer_output, preds = grad_model(img_tensor)
         if pred_index is None:
             pred_index = tf.argmax(preds[0])
-        class_channel = preds[:, int(pred_index)]
+        
+        # 3. FIXED: Use tf.gather instead of int() casting to allow Tensor indexing
+        class_channel = tf.gather(preds, pred_index, axis=1)
 
     grads = tape.gradient(class_channel, last_conv_layer_output)
     pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
@@ -343,24 +349,19 @@ if st.session_state.run_analysis and st.session_state.file_list:
             if is_valid:
                 score = make_robust_prediction(img)
                 if score > 0.5:
-                    status = "PNEUMONIA DETECTED"
-                    conf = score * 100
-                    cls = "medical-box-danger"
-                    icon = "⚠️"
+                    status, conf, cls, icon = "PNEUMONIA DETECTED", score*100, "medical-box-danger", "⚠️"
                 else:
-                    status = "NORMAL / CLEAR"
-                    conf = (1 - score) * 100
-                    cls = "medical-box-safe"
-                    icon = "✅"
+                    status, conf, cls, icon = "NORMAL / CLEAR", (1-score)*100, "medical-box-safe", "✅"
                 
                 st.markdown(f"""<div class="{cls}"><h3>{icon} {status}</h3><p>Confidence: {conf:.1f}%</p></div>""", unsafe_allow_html=True)
                 
-                # --- UPDATED: CONDITIONAL HEATMAP LOGIC ---
-                if score > 0.5: # Only show heatmap options if Pneumonia is found
+                # --- CONDITIONAL HEATMAP LOGIC ---
+                if score > 0.5: # Only show heatmap if Pneumonia Detected
                     show_heatmap = st.toggle("🔍 Enable AI Vision (Heatmap)", key=f"heat_{idx}")
                     if show_heatmap:
                         if last_conv_layer:
                             with st.spinner("Generating Grad-CAM visualization..."):
+                                # 4. FORCE RGB Conversion (Crucial for DenseNet)
                                 img_rgb = img.convert('RGB').resize((224, 224))
                                 img_array = image.img_to_array(img_rgb)
                                 img_array = np.expand_dims(img_array, axis=0) / 255.0
@@ -374,8 +375,7 @@ if st.session_state.run_analysis and st.session_state.file_list:
                         else:
                             st.warning("Heatmap not available.")
                 else:
-                    # Logic for Normal Cases
-                    st.success("✅ No pathological hot-spots detected. AI Vision is disabled for healthy scans.")
+                    st.success("✅ No pathological hot-spots detected. AI Vision disabled for healthy scans.")
                 
                 try:
                     pdf_data = create_pdf(file_source if isinstance(file_source, str) else file_source, status, conf, filename)

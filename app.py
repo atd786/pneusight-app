@@ -35,7 +35,7 @@ st.markdown("""
 
     .block-container {
         padding-top: 1rem;
-        padding-bottom: 0rem;
+        padding-bottom: 2rem;
         padding-left: 2rem;
         padding-right: 2rem;
     }
@@ -105,6 +105,16 @@ st.markdown("""
         color: #c05621;
         margin-bottom: 15px;
         border-radius: 0px;
+    }
+
+    /* INFO FOOTER STYLING */
+    .footer-box {
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 5px;
+        border-left: 5px solid #2E590F;
+        font-size: 0.95rem;
+        color: #444;
     }
 
     .stStatusWidget { visibility: hidden; }
@@ -318,7 +328,7 @@ with c2:
 
 st.divider()
 
-# --- NEW: DEMO SECTION (LOCAL FILES) ---
+# --- NEW: DEMO SECTION (DYNAMIC SCALABILITY) ---
 st.markdown("### 🧪 Quick Test (Demo Mode)")
 st.caption("Don't have an X-ray? Click below to load a sample scan from our internal database.")
 
@@ -328,40 +338,46 @@ demo_active = False
 
 def get_local_demo_image(case_type):
     """
-    Randomly selects a local file from the uploaded set.
+    DYNAMIC SCANNER:
+    This function looks at the current folder and automatically finds files matching:
+    - Normal: starts with 'n' + number (e.g., n1.jpeg, n45.png)
+    - Pneumonia: starts with 'p' + number (e.g., p1.jpeg, p99.jpg)
+    It then picks a random one.
     """
-    if case_type == "normal":
-        candidates = ["n1.jpeg", "n2.jpeg"]
-    else:
-        candidates = ["p1.jpeg", "p2.jpeg"]
+    prefix = "n" if case_type == "normal" else "p"
     
-    # Filter to only use files that actually exist in the folder
-    available = [f for f in candidates if os.path.exists(f)]
-    
-    if not available:
+    try:
+        all_files = os.listdir('.')
+        candidates = [
+            f for f in all_files 
+            if f.lower().startswith(prefix) 
+            and len(f) > 1 and f[1].isdigit() 
+            and f.lower().endswith(('.jpeg', '.jpg', '.png'))
+        ]
+        
+        if not candidates:
+            return None
+        return random.choice(candidates)
+    except Exception as e:
         return None
-    return random.choice(available)
 
 with col_demo1:
     if st.button("Load Random Normal Case 🟢"):
         selected_file = get_local_demo_image("normal")
-        
         if selected_file:
-            # We copy it to a demo name so the report looks professional
             files_to_process.append((selected_file, "Sample_Normal_Case.jpeg"))
             demo_active = True
         else:
-            st.error("⚠️ Demo files (n1.jpeg, n2.jpeg) not found. Please upload them to the app folder.")
+            st.error("⚠️ No demo files found (e.g., n1.jpeg). Please upload them to the app folder.")
 
 with col_demo2:
     if st.button("Load Random Pneumonia Case 🔴"):
         selected_file = get_local_demo_image("pneumonia")
-        
         if selected_file:
             files_to_process.append((selected_file, "Sample_Pneumonia_Case.jpeg"))
             demo_active = True
         else:
-            st.error("⚠️ Demo files (p1.jpeg, p2.jpeg) not found. Please upload them to the app folder.")
+            st.error("⚠️ No demo files found (e.g., p1.jpeg). Please upload them to the app folder.")
 
 st.markdown("---")
 
@@ -434,3 +450,41 @@ if demo_active or (uploaded_files and st.button("START ANALYSIS")):
             
         st.divider()
         progress.progress((idx + 1) / len(files_to_process))
+
+# --- NEW: SYSTEM OVERVIEW FOOTER (Fills Blank Space) ---
+st.divider()
+
+st.markdown("### 🧬 About PneuSight Technology")
+
+col_info1, col_info2, col_info3 = st.columns(3)
+
+with col_info1:
+    st.markdown("""
+    #### 🧠 Deep Learning
+    Powered by a custom **DenseNet-121** Convolutional Neural Network (CNN), fine-tuned on over **5,000 verified chest X-rays** for high-precision pattern recognition.
+    """)
+
+with col_info2:
+    st.markdown("""
+    #### 🛡️ Privacy First
+    PneuSight operates with a strict **No-Storage Policy**. Patient X-rays are analyzed in RAM and discarded immediately after the session. No data is saved to our servers.
+    """)
+
+with col_info3:
+    st.markdown("""
+    #### ⚡ Rapid Triage
+    Designed for high-volume environments, PneuSight delivers diagnostic impressions in **under 2 seconds**, helping radiologists prioritize urgent cases efficiently.
+    """)
+
+st.markdown("") # Spacer
+
+st.markdown("""
+<div class="footer-box">
+    <strong>⚠️ MEDICAL DISCLAIMER</strong><br>
+    PneuSight is an experimental Artificial Intelligence tool developed by the Artificial Intelligence & Radiology Center (AIRC). 
+    It is intended for <strong>research and educational purposes only</strong>. It is NOT a replacement for a professional medical diagnosis. 
+    All AI-generated results must be verified by a certified radiologist or medical practitioner before making clinical decisions.
+</div>
+""", unsafe_allow_html=True)
+
+st.caption(f"AIRC PneuSight v1.2 | System Online | Server Time: {get_pakistan_time()} PKT")

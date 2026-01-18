@@ -329,16 +329,14 @@ def make_robust_prediction(img):
 
 # --- 7. FRONT END UI ---
 
-# --- HELPER: SECURE DOWNLOADER (Fixes HTTP Errors) ---
+# --- HELPER: SECURE DOWNLOADER ---
 def download_with_agent(url, filename):
-    """Downloads files pretending to be a browser to avoid 403 blocks."""
+    """Downloads files using a standard user agent to avoid blocks."""
     try:
         req = urllib.request.Request(
             url, 
             data=None, 
-            headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
-            }
+            headers={'User-Agent': 'Mozilla/5.0'}
         )
         with urllib.request.urlopen(req) as response, open(filename, 'wb') as out_file:
             out_file.write(response.read())
@@ -359,7 +357,7 @@ with c2:
 
 st.divider()
 
-# --- NEW: DEMO SECTION (FIXED) ---
+# --- NEW: DEMO SECTION (STABLE GITHUB LINKS) ---
 st.markdown("### 🧪 Quick Test (Demo Mode)")
 st.caption("Don't have an X-ray? Click below to load a sample scan from our medical database.")
 
@@ -369,24 +367,22 @@ demo_active = False
 
 with col_demo1:
     if st.button("Load Normal Case 🟢"):
-        # URL for a verified Normal X-ray
-        url_normal = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Chest_Xray_PA_3-8-2010.png/600px-Chest_Xray_PA_3-8-2010.png"
-        img_path = "demo_normal.png"
+        # Stable GitHub Raw Link (Normal X-ray)
+        url_normal = "https://raw.githubusercontent.com/mohoroy/Pneumonia-Detection/master/chest_xray/val/NORMAL/NORMAL2-IM-1430-0001.jpeg"
+        img_path = "demo_normal.jpeg"
         
-        # Use new secure downloader
         if download_with_agent(url_normal, img_path):
-            files_to_process.append((img_path, "Sample_Normal_Case_001.png"))
+            files_to_process.append((img_path, "Sample_Normal_Case_001.jpeg"))
             demo_active = True
 
 with col_demo2:
     if st.button("Load Pneumonia Case 🔴"):
-        # URL for a verified Pneumonia X-ray
-        url_pneumo = "https://upload.wikimedia.org/wikipedia/commons/f/f0/Lobar_pneumonia_in_right_middle_lobe.jpg"
-        img_path = "demo_pneumonia.jpg"
+        # Stable GitHub Raw Link (Pneumonia X-ray)
+        url_pneumo = "https://raw.githubusercontent.com/mohoroy/Pneumonia-Detection/master/chest_xray/val/PNEUMONIA/person1946_bacteria_4874.jpeg"
+        img_path = "demo_pneumonia.jpeg"
         
-        # Use new secure downloader
         if download_with_agent(url_pneumo, img_path):
-            files_to_process.append((img_path, "Sample_Pneumonia_Case_099.jpg"))
+            files_to_process.append((img_path, "Sample_Pneumonia_Case_099.jpeg"))
             demo_active = True
 
 st.markdown("---")

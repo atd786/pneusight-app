@@ -10,7 +10,7 @@ import time
 import random
 import os
 import urllib.request
-import matplotlib.cm as cm # 1. ADDED: New import for Heatmap colors
+import matplotlib.cm as cm # New import for Heatmap colors
 from datetime import datetime, timedelta, timezone
 
 # --- 1. PAGE CONFIGURATION ---
@@ -122,6 +122,12 @@ st.markdown("""
     
     </style>
     """, unsafe_allow_html=True)
+
+# --- HELPER: SESSION STATE (MEMORY FIX) ---
+if 'run_analysis' not in st.session_state:
+    st.session_state.run_analysis = False
+if 'file_list' not in st.session_state:
+    st.session_state.file_list = []
 
 # --- HELPER: GET PAKISTAN TIME ---
 def get_pakistan_time():
@@ -397,8 +403,6 @@ st.markdown("### 🧪 Quick Test (Demo Mode)")
 st.caption("Don't have an X-ray? Click below to load a sample scan from our internal database.")
 
 col_demo1, col_demo2, col_demo3 = st.columns([1, 1, 2])
-files_to_process = []
-demo_active = False
 
 def get_local_demo_image(case_type):
     """
@@ -425,43 +429,47 @@ def get_local_demo_image(case_type):
     except Exception as e:
         return None
 
+# --- UI LOGIC UPDATE: Use Session State to Persist Data ---
 with col_demo1:
     if st.button("Load Random Normal Case 🟢"):
-        selected_file = get_local_demo_image("normal")
-        if selected_file:
-            files_to_process.append((selected_file, "Sample_Normal_Case.jpeg"))
-            demo_active = True
-        else:
-            st.error("⚠️ No demo files found (e.g., n1.jpeg). Please upload them to the app folder.")
+        f = get_local_demo_image("normal")
+        if f: 
+            st.session_state.file_list = [(f, "Sample_Normal.jpg")]
+            st.session_state.run_analysis = True
+        else: st.error("Upload 'n1.jpeg' etc to GitHub.")
 
 with col_demo2:
     if st.button("Load Random Pneumonia Case 🔴"):
-        selected_file = get_local_demo_image("pneumonia")
-        if selected_file:
-            files_to_process.append((selected_file, "Sample_Pneumonia_Case.jpeg"))
-            demo_active = True
-        else:
-            st.error("⚠️ No demo files found (e.g., p1.jpeg). Please upload them to the app folder.")
+        f = get_local_demo_image("pneumonia")
+        if f: 
+            st.session_state.file_list = [(f, "Sample_Pneumonia.jpg")]
+            st.session_state.run_analysis = True
+        else: st.error("Upload 'p1.jpeg' etc to GitHub.")
 
 st.markdown("---")
 
-# File Uploader
 uploaded_files = st.file_uploader("Or Upload Patient X-Rays (DICOM/JPEG)", type=["jpg", "jpeg", "png", "dicom"], accept_multiple_files=True)
-
-# Add uploaded files to processing queue if any
 if uploaded_files:
-    for f in uploaded_files:
-        files_to_process.append((f, f.name))
+    # If user uploads new files, reset demo files and add uploaded ones
+    # We only update if this is a fresh upload action
+    if st.session_state.file_list != [(f, f.name) for f in uploaded_files]:
+         st.session_state.file_list = [(f, f.name) for f in uploaded_files]
 
-# --- ANALYSIS ENGINE ---
-if demo_active or (uploaded_files and st.button("START ANALYSIS")):
+# START BUTTON: Updates the 'run_analysis' state
+if st.button("START ANALYSIS"):
+    st.session_state.run_analysis = True
+
+# --- ANALYSIS LOOP (Triggered by State, not just button) ---
+if st.session_state.run_analysis and st.session_state.file_list:
     
-    progress = st.progress(0)
+    # Optional: Don't show progress bar on re-runs to avoid flickering
+    if "processed" not in st.session_state:
+        progress = st.progress(0)
     
-    # 2. ADDED: Locate Conv Layer for Explainability
+    # Locate Conv Layer for Explainability
     last_conv_layer = find_last_conv_layer(model)
     
-    for idx, (file_source, filename) in enumerate(files_to_process):
+    for idx, (file_source, filename) in enumerate(st.session_state.file_list):
         col1, col2 = st.columns([1, 1.5])
         
         # Handle both FileUpload object and local path
@@ -498,7 +506,7 @@ if demo_active or (uploaded_files and st.button("START ANALYSIS")):
                 
                 st.markdown(f"""<div class="{cls}"><h3>{icon} {status}</h3><p>Confidence: {conf:.1f}%</p></div>""", unsafe_allow_html=True)
                 
-                # 3. ADDED: HEATMAP TOGGLE
+                # --- NEW FEATURE: HEATMAP TOGGLE ---
                 show_heatmap = st.toggle("🔍 Enable AI Vision (Heatmap)", key=f"heat_{idx}")
                 
                 if show_heatmap:
@@ -534,7 +542,11 @@ if demo_active or (uploaded_files and st.button("START ANALYSIS")):
                 """, unsafe_allow_html=True)
             
         st.divider()
-        progress.progress((idx + 1) / len(files_to_process))
+        if "processed" not in st.session_state:
+            progress.progress((idx + 1) / len(st.session_state.file_list))
+
+    # Mark as processed so we don't re-run animations on toggle
+    st.session_state.processed = True
 
 # --- NEW: SYSTEM OVERVIEW FOOTER (Fills Blank Space) ---
 st.divider()

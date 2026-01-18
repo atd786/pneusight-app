@@ -10,7 +10,7 @@ import time
 import random
 import os
 import urllib.request
-import matplotlib.cm as cm # 1. ADDED: New import for Heatmap colors
+import matplotlib.cm as cm # Required for Heatmap
 from datetime import datetime, timedelta, timezone
 
 # --- 1. PAGE CONFIGURATION ---
@@ -21,7 +21,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. AIRCPK BRANDING CSS (MATCHING LOGO COLORS) ---
+# --- 2. AIRCPK BRANDING CSS ---
 st.markdown("""
     <style>
     /* INVISIBLE CLOAK - Hides Streamlit Branding */
@@ -304,13 +304,12 @@ except:
     st.error("⚠️ System Offline. Please refresh.")
     st.stop()
 
-# --- 6A. EXPLAINABILITY ENGINE (GRAD-CAM - NEW) ---
+# --- 6A. EXPLAINABILITY ENGINE (GRAD-CAM - FIXED) ---
 def find_last_conv_layer(model):
     """Automatically finds the last convolutional layer in the model."""
     for layer in reversed(model.layers):
         try:
             # Check if layer is 4D (Batch, Height, Width, Channels)
-            # Safe check for both 'output' tensor and 'output_shape' attribute
             if hasattr(layer, 'output'):
                 shape = layer.output.shape
             elif hasattr(layer, 'output_shape'):
@@ -327,9 +326,9 @@ def find_last_conv_layer(model):
 def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None):
     if not last_conv_layer_name: return np.zeros((224, 224))
     
-    # FIXED: Removed the extra brackets around model.inputs
+    # FIXED: Use model.input (singular) to avoid list-wrapping errors
     grad_model = tf.keras.models.Model(
-        model.inputs, [model.get_layer(last_conv_layer_name).output, model.output]
+        model.input, [model.get_layer(last_conv_layer_name).output, model.output]
     )
 
     with tf.GradientTape() as tape:
@@ -452,8 +451,7 @@ st.markdown("---")
 
 uploaded_files = st.file_uploader("Or Upload Patient X-Rays (DICOM/JPEG)", type=["jpg", "jpeg", "png", "dicom"], accept_multiple_files=True)
 if uploaded_files:
-    # If user uploads new files, reset demo files and add uploaded ones
-    # We only update if this is a fresh upload action
+    # If user uploads new files, update session state
     if st.session_state.file_list != [(f, f.name) for f in uploaded_files]:
          st.session_state.file_list = [(f, f.name) for f in uploaded_files]
 
@@ -464,7 +462,6 @@ if st.button("START ANALYSIS"):
 # --- ANALYSIS LOOP (Triggered by State, not just button) ---
 if st.session_state.run_analysis and st.session_state.file_list:
     
-    # Optional: Don't show progress bar on re-runs to avoid flickering
     if "processed" not in st.session_state:
         progress = st.progress(0)
     

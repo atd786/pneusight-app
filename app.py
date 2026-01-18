@@ -329,6 +329,24 @@ def make_robust_prediction(img):
 
 # --- 7. FRONT END UI ---
 
+# --- HELPER: SECURE DOWNLOADER (Fixes HTTP Errors) ---
+def download_with_agent(url, filename):
+    """Downloads files pretending to be a browser to avoid 403 blocks."""
+    try:
+        req = urllib.request.Request(
+            url, 
+            data=None, 
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+            }
+        )
+        with urllib.request.urlopen(req) as response, open(filename, 'wb') as out_file:
+            out_file.write(response.read())
+        return True
+    except Exception as e:
+        st.error(f"Error downloading demo image: {e}")
+        return False
+
 # Header with Logo
 c1, c2 = st.columns([1, 4])
 with c1:
@@ -341,7 +359,7 @@ with c2:
 
 st.divider()
 
-# --- NEW: DEMO SECTION ---
+# --- NEW: DEMO SECTION (FIXED) ---
 st.markdown("### 🧪 Quick Test (Demo Mode)")
 st.caption("Don't have an X-ray? Click below to load a sample scan from our medical database.")
 
@@ -351,21 +369,25 @@ demo_active = False
 
 with col_demo1:
     if st.button("Load Normal Case 🟢"):
-        # URL for a verified Normal X-ray (Wikimedia Commons)
+        # URL for a verified Normal X-ray
         url_normal = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Chest_Xray_PA_3-8-2010.png/600px-Chest_Xray_PA_3-8-2010.png"
         img_path = "demo_normal.png"
-        urllib.request.urlretrieve(url_normal, img_path)
-        files_to_process.append((img_path, "Sample_Normal_Case_001.png"))
-        demo_active = True
+        
+        # Use new secure downloader
+        if download_with_agent(url_normal, img_path):
+            files_to_process.append((img_path, "Sample_Normal_Case_001.png"))
+            demo_active = True
 
 with col_demo2:
     if st.button("Load Pneumonia Case 🔴"):
-        # URL for a verified Pneumonia X-ray (Wikimedia Commons)
+        # URL for a verified Pneumonia X-ray
         url_pneumo = "https://upload.wikimedia.org/wikipedia/commons/f/f0/Lobar_pneumonia_in_right_middle_lobe.jpg"
         img_path = "demo_pneumonia.jpg"
-        urllib.request.urlretrieve(url_pneumo, img_path)
-        files_to_process.append((img_path, "Sample_Pneumonia_Case_099.jpg"))
-        demo_active = True
+        
+        # Use new secure downloader
+        if download_with_agent(url_pneumo, img_path):
+            files_to_process.append((img_path, "Sample_Pneumonia_Case_099.jpg"))
+            demo_active = True
 
 st.markdown("---")
 
@@ -417,7 +439,10 @@ if demo_active or (uploaded_files and st.button("START ANALYSIS")):
                 st.markdown(f"""<div class="{cls}"><h3>{icon} {status}</h3><p>Confidence: {conf:.1f}%</p></div>""", unsafe_allow_html=True)
                 
                 # PDF Download Button
-                pdf_data = create_pdf(img.filename if hasattr(img, 'filename') else "scan.jpg", status, conf, filename)
+                # Check if img has filename attribute (uploaded file) or use default (demo)
+                fname_clean = img.filename if hasattr(img, 'filename') and img.filename else filename
+                
+                pdf_data = create_pdf(file_source if isinstance(file_source, str) else file_source, status, conf, filename)
                 b64 = base64.b64encode(pdf_data).decode()
                 href = f'<a href="data:application/octet-stream;base64,{b64}" download="AIRC_Report_{filename}.pdf" style="text-decoration:none;"><button style="background-color:#2E590F;color:white;width:100%;padding:10px;border:none;border-radius:4px;">📄 DOWNLOAD AIRC REPORT</button></a>'
                 st.markdown(href, unsafe_allow_html=True)
@@ -434,4 +459,3 @@ if demo_active or (uploaded_files and st.button("START ANALYSIS")):
             
         st.divider()
         progress.progress((idx + 1) / len(files_to_process))
-

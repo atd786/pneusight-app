@@ -112,6 +112,29 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# --- INSERTED: CLEAN UI & PADDING FIXES ---
+# 1. Ensure Menu/Footer are hidden (Redundancy check)
+hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
+# 2. Reduce Bottom Padding to 0 to fit iframe perfectly
+reduce_padding = """
+            <style>
+            .block-container {
+                padding-top: 1rem;
+                padding-bottom: 0rem;
+            }
+            </style>
+            """
+st.markdown(reduce_padding, unsafe_allow_html=True)
+# ------------------------------------------
+
 # --- HELPER: GET PAKISTAN TIME ---
 def get_pakistan_time():
     # UTC + 5 Hours
@@ -368,4 +391,3 @@ if uploaded_files and st.button("START ANALYSIS"):
             
         st.divider()
         progress.progress((idx + 1) / len(uploaded_files))
-

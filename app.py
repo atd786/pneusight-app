@@ -35,7 +35,7 @@ st.markdown("""
 
     .block-container {
         padding-top: 1rem;
-        padding-bottom: 5rem;
+        padding-bottom: 0rem;
         padding-left: 2rem;
         padding-right: 2rem;
     }
@@ -111,29 +111,6 @@ st.markdown("""
     
     </style>
     """, unsafe_allow_html=True)
-
-# --- INSERTED: CLEAN UI & PADDING FIXES ---
-# 1. Ensure Menu/Footer are hidden (Redundancy check)
-hide_streamlit_style = """
-            <style>
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            header {visibility: hidden;}
-            </style>
-            """
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
-
-# 2. Reduce Bottom Padding to 0 to fit iframe perfectly
-reduce_padding = """
-            <style>
-            .block-container {
-                padding-top: 1rem;
-                padding-bottom: 0rem;
-            }
-            </style>
-            """
-st.markdown(reduce_padding, unsafe_allow_html=True)
-# ------------------------------------------
 
 # --- HELPER: GET PAKISTAN TIME ---
 def get_pakistan_time():
@@ -329,35 +306,6 @@ def make_robust_prediction(img):
 
 # --- 7. FRONT END UI ---
 
-# --- HELPER: EMBEDDED DEMO IMAGES (100% RELIABILITY) ---
-def get_demo_image(case_type):
-    # These are tiny, compressed placeholders that will download the real high-res version if needed, 
-    # but for this demo, we use reliable public URLs that are hard-coded to allow-list domains.
-    if case_type == "normal":
-        # Using a highly stable Wikipedia static asset
-        return "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Chest_Xray_PA_3-8-2010.png/600px-Chest_Xray_PA_3-8-2010.png"
-    else:
-        # Using a highly stable Wikipedia static asset
-        return "https://upload.wikimedia.org/wikipedia/commons/f/f0/Lobar_pneumonia_in_right_middle_lobe.jpg"
-
-def download_with_retry(url, filename):
-    """Downloads with browser headers to bypass strict 403/404 blocks."""
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Referer': 'https://www.google.com/'
-    }
-    try:
-        req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req) as response, open(filename, 'wb') as out_file:
-            out_file.write(response.read())
-        return True
-    except Exception as e:
-        # Fallback to creating a dummy image if internet fails completely so app doesn't crash
-        img = Image.new('L', (300, 300), color=128)
-        img.save(filename)
-        st.warning(f"Could not download demo image (Network Block). Using placeholder. Error: {e}")
-        return True
-
 # Header with Logo
 c1, c2 = st.columns([1, 4])
 with c1:
@@ -370,29 +318,50 @@ with c2:
 
 st.divider()
 
-# --- NEW: DEMO SECTION (ROBUST) ---
+# --- NEW: DEMO SECTION (LOCAL FILES) ---
 st.markdown("### 🧪 Quick Test (Demo Mode)")
-st.caption("Don't have an X-ray? Click below to load a sample scan from our medical database.")
+st.caption("Don't have an X-ray? Click below to load a sample scan from our internal database.")
 
 col_demo1, col_demo2, col_demo3 = st.columns([1, 1, 2])
 files_to_process = []
 demo_active = False
 
+def get_local_demo_image(case_type):
+    """
+    Randomly selects a local file from the uploaded set.
+    """
+    if case_type == "normal":
+        candidates = ["n1.jpeg", "n2.jpeg"]
+    else:
+        candidates = ["p1.jpeg", "p2.jpeg"]
+    
+    # Filter to only use files that actually exist in the folder
+    available = [f for f in candidates if os.path.exists(f)]
+    
+    if not available:
+        return None
+    return random.choice(available)
+
 with col_demo1:
-    if st.button("Load Normal Case 🟢"):
-        url = get_demo_image("normal")
-        img_path = "demo_normal.png"
-        if download_with_retry(url, img_path):
-            files_to_process.append((img_path, "Sample_Normal_Case_001.png"))
+    if st.button("Load Random Normal Case 🟢"):
+        selected_file = get_local_demo_image("normal")
+        
+        if selected_file:
+            # We copy it to a demo name so the report looks professional
+            files_to_process.append((selected_file, "Sample_Normal_Case.jpeg"))
             demo_active = True
+        else:
+            st.error("⚠️ Demo files (n1.jpeg, n2.jpeg) not found. Please upload them to the app folder.")
 
 with col_demo2:
-    if st.button("Load Pneumonia Case 🔴"):
-        url = get_demo_image("pneumonia")
-        img_path = "demo_pneumonia.jpg"
-        if download_with_retry(url, img_path):
-            files_to_process.append((img_path, "Sample_Pneumonia_Case_099.jpg"))
+    if st.button("Load Random Pneumonia Case 🔴"):
+        selected_file = get_local_demo_image("pneumonia")
+        
+        if selected_file:
+            files_to_process.append((selected_file, "Sample_Pneumonia_Case.jpeg"))
             demo_active = True
+        else:
+            st.error("⚠️ Demo files (p1.jpeg, p2.jpeg) not found. Please upload them to the app folder.")
 
 st.markdown("---")
 

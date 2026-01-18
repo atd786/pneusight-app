@@ -341,19 +341,62 @@ with c2:
 
 st.divider()
 
-uploaded_files = st.file_uploader("Upload Chest X-Rays (DICOM/JPEG)", type=["jpg", "jpeg", "png", "dicom"], accept_multiple_files=True)
+# --- NEW: DEMO SECTION ---
+st.markdown("### 🧪 Quick Test (Demo Mode)")
+st.caption("Don't have an X-ray? Click below to load a sample scan from our medical database.")
 
-if uploaded_files and st.button("START ANALYSIS"):
+col_demo1, col_demo2, col_demo3 = st.columns([1, 1, 2])
+files_to_process = []
+demo_active = False
+
+with col_demo1:
+    if st.button("Load Normal Case 🟢"):
+        # URL for a verified Normal X-ray (Wikimedia Commons)
+        url_normal = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Chest_Xray_PA_3-8-2010.png/600px-Chest_Xray_PA_3-8-2010.png"
+        img_path = "demo_normal.png"
+        urllib.request.urlretrieve(url_normal, img_path)
+        files_to_process.append((img_path, "Sample_Normal_Case_001.png"))
+        demo_active = True
+
+with col_demo2:
+    if st.button("Load Pneumonia Case 🔴"):
+        # URL for a verified Pneumonia X-ray (Wikimedia Commons)
+        url_pneumo = "https://upload.wikimedia.org/wikipedia/commons/f/f0/Lobar_pneumonia_in_right_middle_lobe.jpg"
+        img_path = "demo_pneumonia.jpg"
+        urllib.request.urlretrieve(url_pneumo, img_path)
+        files_to_process.append((img_path, "Sample_Pneumonia_Case_099.jpg"))
+        demo_active = True
+
+st.markdown("---")
+
+# File Uploader
+uploaded_files = st.file_uploader("Or Upload Patient X-Rays (DICOM/JPEG)", type=["jpg", "jpeg", "png", "dicom"], accept_multiple_files=True)
+
+# Add uploaded files to processing queue if any
+if uploaded_files:
+    for f in uploaded_files:
+        files_to_process.append((f, f.name))
+
+# --- ANALYSIS ENGINE ---
+# Trigger if Demo button clicked OR if files uploaded + Start button
+if demo_active or (uploaded_files and st.button("START ANALYSIS")):
+    
     progress = st.progress(0)
-    for idx, file in enumerate(uploaded_files):
+    
+    for idx, (file_source, filename) in enumerate(files_to_process):
         col1, col2 = st.columns([1, 1.5])
         
+        # Handle both FileUpload object and local path (for demo)
+        if isinstance(file_source, str): # It's a file path (Demo)
+            img = Image.open(file_source)
+        else: # It's a StreamlitUploadedFile
+            img = Image.open(file_source)
+
         # --- VALIDATION CHECK ---
-        img = Image.open(file)
         is_valid, error_msg = validate_image(img)
         
         with col1:
-            st.image(img, caption=file.name, width=250)
+            st.image(img, caption=f"ID: {filename}", width=250)
             
         with col2:
             if is_valid:
@@ -374,9 +417,9 @@ if uploaded_files and st.button("START ANALYSIS"):
                 st.markdown(f"""<div class="{cls}"><h3>{icon} {status}</h3><p>Confidence: {conf:.1f}%</p></div>""", unsafe_allow_html=True)
                 
                 # PDF Download Button
-                pdf_data = create_pdf(file, status, conf, file.name)
+                pdf_data = create_pdf(img.filename if hasattr(img, 'filename') else "scan.jpg", status, conf, filename)
                 b64 = base64.b64encode(pdf_data).decode()
-                href = f'<a href="data:application/octet-stream;base64,{b64}" download="AIRC_Report_{file.name}.pdf" style="text-decoration:none;"><button style="background-color:#2E590F;color:white;width:100%;padding:10px;border:none;border-radius:4px;">📄 DOWNLOAD AIRC REPORT</button></a>'
+                href = f'<a href="data:application/octet-stream;base64,{b64}" download="AIRC_Report_{filename}.pdf" style="text-decoration:none;"><button style="background-color:#2E590F;color:white;width:100%;padding:10px;border:none;border-radius:4px;">📄 DOWNLOAD AIRC REPORT</button></a>'
                 st.markdown(href, unsafe_allow_html=True)
                 
             else:
@@ -390,4 +433,5 @@ if uploaded_files and st.button("START ANALYSIS"):
                 """, unsafe_allow_html=True)
             
         st.divider()
-        progress.progress((idx + 1) / len(uploaded_files))
+        progress.progress((idx + 1) / len(files_to_process))
+

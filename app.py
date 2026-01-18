@@ -10,6 +10,7 @@ import time
 import random
 import os
 import urllib.request
+import matplotlib.cm as cm # New import for Heatmap colors
 from datetime import datetime, timedelta, timezone
 
 # --- 1. PAGE CONFIGURATION ---
@@ -297,7 +298,56 @@ except:
     st.error("⚠️ System Offline. Please refresh.")
     st.stop()
 
-# --- 6. AI LOGIC (TTA) ---
+# --- 6A. EXPLAINABILITY ENGINE (GRAD-CAM - NEW) ---
+def find_last_conv_layer(model):
+    """Automatically finds the last convolutional layer in the model."""
+    for layer in reversed(model.layers):
+        if len(layer.output_shape) == 4:
+            return layer.name
+    return None
+
+def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None):
+    grad_model = tf.keras.models.Model(
+        [model.inputs], [model.get_layer(last_conv_layer_name).output, model.output]
+    )
+
+    with tf.GradientTape() as tape:
+        last_conv_layer_output, preds = grad_model(img_array)
+        if pred_index is None:
+            pred_index = tf.argmax(preds[0])
+        class_channel = preds[:, pred_index]
+
+    grads = tape.gradient(class_channel, last_conv_layer_output)
+    pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
+    last_conv_layer_output = last_conv_layer_output[0]
+    heatmap = last_conv_layer_output @ pooled_grads[..., tf.newaxis]
+    heatmap = tf.squeeze(heatmap)
+    heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
+    return heatmap.numpy()
+
+def generate_heatmap_overlay(original_img, heatmap):
+    # Rescale heatmap to 0-255
+    heatmap = np.uint8(255 * heatmap)
+    
+    # Use jet colormap
+    jet = cm.get_cmap("jet")
+    
+    # Use RGB values of the colormap
+    jet_colors = jet(np.arange(256))[:, :3]
+    jet_heatmap = jet_colors[heatmap]
+    
+    # Create an image from RGB heatmap
+    jet_heatmap = image.array_to_img(jet_heatmap)
+    jet_heatmap = jet_heatmap.resize((original_img.size[0], original_img.size[1]))
+    jet_heatmap = image.img_to_array(jet_heatmap)
+
+    # Superimpose the heatmap on original image
+    original_img_array = image.img_to_array(original_img)
+    superimposed_img = jet_heatmap * 0.4 + original_img_array
+    superimposed_img = image.array_to_img(superimposed_img)
+    return superimposed_img
+
+# --- 6B. AI LOGIC (TTA) ---
 def make_robust_prediction(img):
     img = img.convert('RGB')
     images_to_test = [img, ImageOps.mirror(img)]
@@ -394,6 +444,9 @@ if demo_active or (uploaded_files and st.button("START ANALYSIS")):
     
     progress = st.progress(0)
     
+    # Locate Conv Layer for Explainability
+    last_conv_layer = find_last_conv_layer(model)
+    
     for idx, (file_source, filename) in enumerate(files_to_process):
         col1, col2 = st.columns([1, 1.5])
         
@@ -430,6 +483,21 @@ if demo_active or (uploaded_files and st.button("START ANALYSIS")):
                     icon = "✅"
                 
                 st.markdown(f"""<div class="{cls}"><h3>{icon} {status}</h3><p>Confidence: {conf:.1f}%</p></div>""", unsafe_allow_html=True)
+                
+                # --- NEW FEATURE: HEATMAP TOGGLE ---
+                show_heatmap = st.toggle("🔍 Enable AI Vision (Heatmap)", key=f"heat_{idx}")
+                
+                if show_heatmap:
+                    with st.spinner("Generating Grad-CAM visualization..."):
+                        # Prepare image for Heatmap
+                        img_array = image.img_to_array(img.resize((224, 224)))
+                        img_array = np.expand_dims(img_array, axis=0) / 255.0
+                        
+                        # Generate Heatmap
+                        heatmap = make_gradcam_heatmap(img_array, model, last_conv_layer)
+                        overlay = generate_heatmap_overlay(img, heatmap)
+                        
+                        st.image(overlay, caption="AI Attention Map (Red = Infection Focus)", width=250)
                 
                 # PDF Download Button
                 try:

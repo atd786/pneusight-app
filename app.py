@@ -24,7 +24,7 @@ st.set_page_config(
 # --- 2. AIRCPK BRANDING CSS ---
 st.markdown("""
     <style>
-    /* INVISIBLE CLOAK */
+    /* INVISIBLE CLOAK - Hides Streamlit Branding */
     #MainMenu, footer, header { visibility: hidden; display: none !important; }
     
     /* MAIN THEME */
@@ -41,6 +41,7 @@ st.markdown("""
         padding-right: 2rem;
     }
 
+    /* MOBILE TWEAKS */
     @media only screen and (max-width: 600px) {
         .block-container { padding: 0.5rem !important; }
         h1 { font-size: 1.8rem !important; }
@@ -217,40 +218,29 @@ except:
     st.error("⚠️ System Offline.")
     st.stop()
 
-# --- 6A. EXPLAINABILITY ENGINE (COMPATIBILITY PATCH) ---
+# --- 6A. EXPLAINABILITY ENGINE (FIXED INPUT SHAPE) ---
 def find_last_conv_layer(model):
-    """Automatically finds the last convolutional layer in the model."""
     for layer in reversed(model.layers):
         try:
-            if hasattr(layer, 'output'):
-                shape = layer.output.shape
-            elif hasattr(layer, 'output_shape'):
-                shape = layer.output_shape
-            else:
-                continue
-            if len(shape) == 4:
-                return layer.name
-        except:
-            continue
+            if hasattr(layer, 'output'): shape = layer.output.shape
+            elif hasattr(layer, 'output_shape'): shape = layer.output_shape
+            else: continue
+            if len(shape) == 4: return layer.name
+        except: continue
     return None
 
 def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None):
     if not last_conv_layer_name: return np.zeros((224, 224))
     
-    # PATCH 1: Explicitly define inputs using keyword arguments for safety
+    # Use model.input (singular) to ensure Keras handles the single tensor correctly
     grad_model = tf.keras.models.Model(
-        inputs=model.inputs, 
-        outputs=[model.get_layer(last_conv_layer_name).output, model.output]
+        model.input, [model.get_layer(last_conv_layer_name).output, model.output]
     )
 
-    # PATCH 2: Convert input to float32 to prevent compatibility errors
-    img_tensor = tf.cast(img_array, tf.float32)
-
     with tf.GradientTape() as tape:
-        last_conv_layer_output, preds = grad_model(img_tensor)
+        last_conv_layer_output, preds = grad_model(img_array)
         if pred_index is None:
             pred_index = tf.argmax(preds[0])
-        # PATCH 3: Force integer casting for index
         class_channel = preds[:, int(pred_index)]
 
     grads = tape.gradient(class_channel, last_conv_layer_output)
@@ -273,7 +263,7 @@ def generate_heatmap_overlay(original_img, heatmap):
     superimposed_img = jet_heatmap * 0.4 + original_img_array
     return image.array_to_img(superimposed_img)
 
-# --- 6B. AI LOGIC (TTA) ---
+# --- 6B. AI LOGIC ---
 def make_robust_prediction(img):
     img = img.convert('RGB')
     images_to_test = [img, ImageOps.mirror(img)]
@@ -286,21 +276,13 @@ def make_robust_prediction(img):
         batch.append(image.img_to_array(i_resized) / 255.0)
     return np.mean(model.predict(np.array(batch)))
 
-# --- 7. FRONT END UI ---
-
-# Header with Logo
+# --- 7. UI ---
 c1, c2 = st.columns([1, 4])
-with c1:
-    st.image("https://aircpk.com/wp-content/uploads/2025/10/cropped-cropped-AIRCPK-Logo.jpeg", width=150)
-with c2:
-    st.markdown("""
-        <h1 style='color:#2E590F; margin-bottom:0;'>AIRC PneuSight</h1>
-        <p style='color:#666; font-size:1.1rem;'>Artificial Intelligence & Radiology Center | Advanced AI X-ray Triage System</p>
-    """, unsafe_allow_html=True)
+with c1: st.image("https://aircpk.com/wp-content/uploads/2025/10/cropped-cropped-AIRCPK-Logo.jpeg", width=150)
+with c2: st.markdown("<h1 style='color:#2E590F; margin-bottom:0;'>AIRC PneuSight</h1><p style='color:#666;'>Advanced AI X-ray Triage System</p>", unsafe_allow_html=True)
 
 st.divider()
 
-# --- NEW: DEMO SECTION (DYNAMIC SCALABILITY) ---
 st.markdown("### 🧪 Quick Test (Demo Mode)")
 st.caption("Don't have an X-ray? Click below to load a sample scan from our internal database.")
 
@@ -310,17 +292,10 @@ def get_local_demo_image(case_type):
     prefix = "n" if case_type == "normal" else "p"
     try:
         all_files = os.listdir('.')
-        candidates = [
-            f for f in all_files 
-            if f.lower().startswith(prefix) 
-            and len(f) > 1 and f[1].isdigit() 
-            and f.lower().endswith(('.jpeg', '.jpg', '.png'))
-        ]
-        if not candidates: return None
-        return random.choice(candidates)
+        candidates = [f for f in all_files if f.lower().startswith(prefix) and len(f) > 1 and f[1].isdigit()]
+        return random.choice(candidates) if candidates else None
     except: return None
 
-# --- UI LOGIC UPDATE: Use Session State to Persist Data ---
 with col_demo1:
     if st.button("Load Random Normal Case 🟢"):
         f = get_local_demo_image("normal")
@@ -347,7 +322,6 @@ if uploaded_files:
 if st.button("START ANALYSIS"):
     st.session_state.run_analysis = True
 
-# --- ANALYSIS LOOP ---
 if st.session_state.run_analysis and st.session_state.file_list:
     
     if "processed" not in st.session_state:
@@ -381,7 +355,9 @@ if st.session_state.run_analysis and st.session_state.file_list:
                 if show_heatmap:
                     if last_conv_layer:
                         with st.spinner("Generating Grad-CAM visualization..."):
-                            img_array = image.img_to_array(img.resize((224, 224)))
+                            # FIXED: Force RGB conversion to match Model Input (3 Channels)
+                            img_rgb = img.convert('RGB').resize((224, 224))
+                            img_array = image.img_to_array(img_rgb)
                             img_array = np.expand_dims(img_array, axis=0) / 255.0
                             
                             try:

@@ -18,4 +18,4 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git push https://AIRCPK:$HF_TOKEN@huggingface.co/spaces/AIRCPK/Pneusight main
+          git push --force https://AIRCPK:$HF_TOKEN@huggingface.co/spaces/AIRCPK/Pneusight main
